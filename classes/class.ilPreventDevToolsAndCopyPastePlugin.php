@@ -29,12 +29,12 @@ class ilPreventDevToolsAndCopyPastePlugin extends ilUserInterfaceHookPlugin
         return "PreventDevToolsAndCopyPaste";
     }
 
-  /**
+    /**
      * modifyGUI:
-     * - Liest die Plugin-Einstellungen (global_block und refid_list).
-     * - Wenn global_block aktiviert ist, wird prevent.js immer geladen.
-     * - Andernfalls wird das Script nur eingebunden, wenn in der URL sowohl
-     *   eine gültige ref_id als auch ein active_id > 0 vorhanden ist und die ref_id in der erlaubten Liste steht.
+     * - Liest die Plugin-Einstellungen (plugin_enabled und refid_list).
+     * - Wenn plugin_enabled = "1", wird prevent.js eingebunden, aber nur dann,
+     *   wenn eine gültige ref_id und ein active_id > 0 in der URL enthalten sind
+     *   und die ref_id in der Liste steht.
      */
     public function modifyGUI(string $a_comp, string $a_part, array $a_par = []): void
     {
@@ -43,26 +43,29 @@ class ilPreventDevToolsAndCopyPastePlugin extends ilUserInterfaceHookPlugin
             return;
         }
 
-        $global_val = $this->config->get("global_block");  // "1" oder ""
-        $refid_list = $this->config->get("refid_list");       // z. B. "24093,24100"
+        // Check, ob das Plugin überhaupt aktiv ist
+        $plugin_enabled = $this->config->get("plugin_enabled"); // "1" oder ""
+        if ($plugin_enabled !== "1") {
+            // Plugin ist deaktiviert
+            return;
+        }
+
+        // Plugin ist aktiviert -> weiter prüfen
+        $refid_list  = $this->config->get("refid_list"); // z. B. "24093,24100"
         $refid_array = [];
         if (trim($refid_list) !== "") {
             $refid_array = array_map('trim', explode(',', $refid_list));
         }
 
-        // Zusätzlicher Check: active_id
-        $active_id = (int)($_GET['active_id'] ?? 0);
+        // Prüfe zusätzlich den active_id
+        $active_id      = (int)($_GET['active_id'] ?? 0);
+        $current_ref_id = (int)($_GET['ref_id'] ?? 0);
 
-        if ($global_val === "1") {
+        // Nur wenn active_id > 0, ref_id > 0 UND ref_id in der Liste -> JS einbinden
+        if ($active_id > 0 && $current_ref_id > 0 && in_array($current_ref_id, $refid_array)) {
             $tpl->addJavaScript($this->getJsPath());
-        } else {
-            $current_ref_id = (int)($_GET['ref_id'] ?? 0);
-            if ($active_id > 0 && $current_ref_id > 0 && in_array($current_ref_id, $refid_array)) {
-                $tpl->addJavaScript($this->getJsPath());
-            }
         }
     }
-
 
     /**
      * Gibt den Pfad zu prevent.js zurück.

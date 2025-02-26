@@ -52,16 +52,17 @@ class ilPreventDevToolsAndCopyPasteConfigGUI extends ilPluginConfigGUI
         global $DIC;
         $ctrl = $DIC->ctrl();
         $tpl  = $DIC->ui()->mainTemplate();
- 
+
         $form = $this->initForm();
         if ($form->checkInput()) {
-            $global_block = $form->getInput("global_block") ? "1" : "";
-            $refid_list   = $form->getInput("refid_list") ?? "";
- 
+            // Neues Setting: plugin_enabled statt global_block
+            $plugin_enabled = $form->getInput("plugin_enabled") ? "1" : "";
+            $refid_list     = $form->getInput("refid_list") ?? "";
+
             $cfg = $this->plugin->getConfig();
-            $cfg->set("global_block", $global_block);
+            $cfg->set("plugin_enabled", $plugin_enabled);
             $cfg->set("refid_list", trim($refid_list));
- 
+
             // Keine Erfolgsmeldung – direkt umleiten
             $ctrl->redirect($this, "configure");
         } else {
@@ -77,25 +78,28 @@ class ilPreventDevToolsAndCopyPasteConfigGUI extends ilPluginConfigGUI
     {
         global $DIC;
         $ctrl = $DIC->ctrl();
- 
+
         $form = new ilPropertyFormGUI();
         $form->setTitle("Prevent DevTools & Copy/Paste - Einstellungen");
         $form->setFormAction($ctrl->getFormAction($this));
- 
+
         $cfg = $this->plugin->getConfig();
-        $savedGlobal = $cfg->get("global_block");
-        $savedRefids = $cfg->get("refid_list");
- 
-        $cb = new ilCheckboxInputGUI("Global aktivieren?", "global_block");
-        $cb->setInfo("Wenn aktiviert, blockiert das Plugin in ganz ILIAS Copy&Paste/DevTools.");
-        $cb->setChecked($savedGlobal === "1");
+        // Neues Setting aus DB holen
+        $savedEnabled = $cfg->get("plugin_enabled");
+        $savedRefids  = $cfg->get("refid_list");
+
+        // Neue Checkbox: "Plugin aktivieren"
+        $cb = new ilCheckboxInputGUI("Plugin aktivieren", "plugin_enabled");
+        $cb->setInfo("Wenn aktiviert, blockiert das Plugin Copy&Paste / DevTools basierend auf ref_ids.");
+        $cb->setChecked($savedEnabled === "1");
         $form->addItem($cb);
- 
+
+        // Textfeld: ref_ids
         $ti = new ilTextInputGUI("ref_ids (Kommagetrennt)", "refid_list");
-        $ti->setInfo("Blockiert nur bei diesen ref_ids, falls global nicht aktiv ist (z. B.: 24093,24100).");
+        $ti->setInfo("Wenn das Plugin aktiviert ist, blockiert es nur bei diesen ref_ids, vorausgesetzt es ist ein active_id > 0 vorhanden.");
         $ti->setValue($savedRefids);
         $form->addItem($ti);
- 
+
         $form->addCommandButton("save", "Speichern");
         return $form;
     }
